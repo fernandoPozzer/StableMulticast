@@ -12,6 +12,11 @@ class VectorClock
         vc = new HashMap<>();
     }
 
+    public void add(String ip)
+    {
+        vc.put(ip, -1);
+    }
+
     public void add(String ip, Integer value)
     {
         vc.put(ip, value);

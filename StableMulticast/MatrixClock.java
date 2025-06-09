@@ -5,7 +5,7 @@ import java.util.Map;
 
 class MatrixClock
 {
-    Map<String, VectorClock> mc;
+    public Map<String, VectorClock> mc;
     
     public MatrixClock()
     {
@@ -33,6 +33,24 @@ class MatrixClock
         copy.copy(newVectorClock);
 
         mc.put(ip, copy);
+    }
+
+    public void addNewParticipant(String ip)
+    {
+        for (VectorClock vc : mc.values())
+        {
+            vc.add(ip);
+        }
+
+        VectorClock newVectorClock = new VectorClock();
+        newVectorClock.add(ip);
+
+        for (String key : mc.keySet())
+        {
+            newVectorClock.add(key);
+        }
+
+        addVectorClock(ip, newVectorClock);
     }
 
     @Override
