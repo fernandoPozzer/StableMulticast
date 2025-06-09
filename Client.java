@@ -8,7 +8,8 @@ public class Client implements IStableMulticast
     public static void main(String[] args)
     {
         client = new Client();
-        stableMulticast = new StableMulticast("192.168.0.1", 2020, client);
+        String groupIP = "230.0.0.1";
+        stableMulticast = new StableMulticast(groupIP, 2020, client);
 
         stableMulticast.msend("eu gosto de bolo", client);
     }

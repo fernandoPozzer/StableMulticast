@@ -37,6 +37,11 @@ class MatrixClock
 
     public void addNewParticipant(String ip)
     {
+        if (mc.containsKey(ip))
+        {
+            return;
+        }
+        
         for (VectorClock vc : mc.values())
         {
             vc.add(ip);

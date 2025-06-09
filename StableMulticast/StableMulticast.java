@@ -1,31 +1,126 @@
 package StableMulticast;
 
+import java.io.IOException;
+import java.net.DatagramPacket;
+import java.net.DatagramSocket;
+import java.net.InetAddress;
+import java.net.MulticastSocket;
 import java.util.ArrayList;
 import java.util.Iterator;
 import java.util.List;
 
 public class StableMulticast
 {
-    private String ip;
-    private Integer port;
+    private String clientIP;
     private IStableMulticast client;
 
     private List<Message> messageBuffer;
     private MatrixClock mc;
 
+    private String multicastIP;
+    private Integer port;
+
+    private MulticastSocket multicastSocket;
+    private DatagramSocket unicastSocket;
+
     public StableMulticast(String ip, Integer port, IStableMulticast client)
     {
-        this.ip = ip;
+        multicastIP = ip;
         this.port = port;
         this.client = client;
 
         messageBuffer = new ArrayList<>();
-        
         VectorClock startVectorClock = new VectorClock();
-        startVectorClock.add(ip, 0);
-        
         mc = new MatrixClock();
-        mc.addVectorClock(ip, startVectorClock);
+
+        try
+        {
+            // Inicia Matriz de Relogios
+
+            clientIP = InetAddress.getLocalHost().getHostAddress();
+            startVectorClock.add(clientIP, 0);
+            mc.addVectorClock(clientIP, startVectorClock);
+
+            // Entra no grupo multicast
+
+            multicastSocket = new MulticastSocket(port);
+            InetAddress grupoInet = InetAddress.getByName(ip);
+            multicastSocket.joinGroup(grupoInet);
+
+            // Cria socket para mensagens unicast
+
+            unicastSocket = new DatagramSocket(port);
+
+            // Cria threads
+
+            Thread sendMulticastThread = new Thread(() -> sendNewParticipantMessage());
+            Thread listenMulticastThread = new Thread(() -> receiveNewParticipantMessage());
+            Thread listenUnicastThread = new Thread(() -> receiveMessage());
+
+            sendMulticastThread.start();
+            listenMulticastThread.start();
+            listenUnicastThread.start();
+        }
+        catch(Exception e)
+        {
+            System.out.println(e);
+        }
+    }
+
+    private void sendNewParticipantMessage()
+    {
+        try
+        {
+            byte[] data = clientIP.getBytes();
+            DatagramPacket packet = new DatagramPacket(data, data.length, InetAddress.getByName(multicastIP), port);
+            multicastSocket.send(packet);
+        }
+        catch(Exception e)
+        {
+            e.printStackTrace();
+        }
+    }
+
+    private void receiveNewParticipantMessage()
+    {
+        byte[] buffer = new byte[1024];
+        DatagramPacket packet = new DatagramPacket(buffer, buffer.length);
+
+        try
+        {
+            multicastSocket.receive(packet);
+            String newParticipantIP =  new String(packet.getData(), 0, packet.getLength());
+
+            System.out.println("Recebi Participante: " + newParticipantIP);
+            mc.addNewParticipant(newParticipantIP);
+        }
+        catch (IOException e)
+        {
+            e.printStackTrace();
+        }
+    }
+
+    private void receiveMessage()
+    {
+        byte[] buffer = new byte[1024];
+        DatagramPacket packet = new DatagramPacket(buffer, buffer.length);
+
+        try
+        {
+            unicastSocket.receive(packet);
+            String newMessageString =  new String(packet.getData(), 0, packet.getLength());
+
+            Message newMessage = new Message(newMessageString);
+            messageBuffer.add(newMessage);
+
+            /// adicionar em MC
+        }
+        catch(Exception e)
+        {
+            e.printStackTrace();
+        }
+
+        checkMessagesToDiscard();
     }
 
     public void msend(String msg, IStableMulticast cliente)
@@ -41,20 +136,6 @@ public class StableMulticast
 
         // Message m = new Message(fullMessage);
         // System.out.println("Deserializing Message:\n" + m);
-    }
-
-    private void lookForNewParticipants()
-    {
-        // usar ip multicast
-        // add em vc
-    }
-
-    private void receiveMessage()
-    {
-        // Message m = new Message(msg);
-        // vc[ip] = m.vc; como cópia
-
-        checkMessagesToDiscard();
     }
 
     private void checkMessagesToDiscard()
